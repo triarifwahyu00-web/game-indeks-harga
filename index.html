@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Duel Pasar: Indeks Harga - Ekonomi Kelas XI</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Fredoka+One&family=Quicksand:wght@400;600;700&display=swap');
+        
+        body { 
+            font-family: 'Quicksand', sans-serif; 
+            background: #fdfcf0; 
+            overflow: hidden;
+        }
+        .heading-font { font-family: 'Fredoka One', cursive; }
+        .hidden { display: none; }
+        
+        /* Atap Kios Pasar */
+        .stall-roof {
+            background: repeating-linear-gradient(
+                90deg,
+                #ef4444,
+                #ef4444 40px,
+                #ffffff 40px,
+                #ffffff 80px
+            );
+            border-bottom: 8px solid #b91c1c;
+        }
+
+        .player-zone {
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        
+        .active-turn {
+            transform: scale(1.02);
+            z-index: 10;
+        }
+
+        @keyframes pulse-gold {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(234, 179, 8, 0.7); }
+            50% { box-shadow: 0 0 20px 10px rgba(234, 179, 8, 0.4); }
+        }
+        .buzzer-active {
+            animation: pulse-gold 1.5s infinite;
+        }
+
+        .coin-pop {
+            animation: popUp 0.5s ease-out forwards;
+        }
+        @keyframes popUp {
+            0% { transform: translateY(0) scale(1); opacity: 1; }
+            100% { transform: translateY(-50px) scale(1.5); opacity: 0; }
+        }
+
+        /* Musik Control UI */
+        .music-control {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            z-index: 100;
+            background: white;
+            padding: 8px;
+            border-radius: 50%;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            cursor: pointer;
+            width: 45px;
+            height: 45px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 2px solid #ef4444;
+        }
+    </style>
+</head>
+<body class="h-screen w-screen flex flex-col">
+
+    <!-- Audio Element -->
+    <audio id="bg-music" loop>
+        <source src="https://github.com/triarifwahyu00-web/musik-game/raw/refs/heads/main/Sunny_Math_Morning.mp3" type="audio/mpeg">
+    </audio>
+
+    <!-- Musik Toggle Button -->
+    <div id="music-toggle" class="music-control hidden" onclick="toggleMusic()">
+        <span id="music-icon">🎵</span>
+    </div>
+
+    <!-- Start Screen -->
+    <div id="start-screen" class="absolute inset-0 z-50 flex items-center justify-center bg-red-500 p-6">
+        <div class="bg-white rounded-3xl p-10 max-w-2xl w-full text-center shadow-2xl relative overflow-hidden">
+            <div class="stall-roof h-12 w-full absolute top-0 left-0"></div>
+            <div class="mt-8">
+                <h1 class="heading-font text-5xl text-red-600 mb-2 tracking-wide">DUEL PASAR 🍎</h1>
+                <p class="text-gray-500 font-bold mb-8 italic">Misi: Menguasai Definisi & Tujuan Indeks Harga</p>
+                
+                <div class="grid grid-cols-2 gap-6 mb-10">
+                    <div class="p-6 bg-blue-50 rounded-2xl border-4 border-blue-200 relative">
+                        <div class="absolute -top-4 left-1/2 -translate-x-1/2 bg-blue-600 text-white px-4 py-1 rounded-full text-xs font-bold uppercase">Pedagang 1</div>
+                        <span class="text-5xl">🛒</span>
+                        <p class="font-black text-blue-700 mt-4 text-xl">TEKAN 'A'</p>
+                        <p class="text-xs text-blue-400 mt-1 uppercase tracking-tighter">Untuk Menyetok Barang</p>
+                    </div>
+                    <div class="p-6 bg-orange-50 rounded-2xl border-4 border-orange-200 relative">
+                        <div class="absolute -top-4 left-1/2 -translate-x-1/2 bg-orange-600 text-white px-4 py-1 rounded-full text-xs font-bold uppercase">Pedagang 2</div>
+                        <span class="text-5xl">🛍️</span>
+                        <p class="font-black text-orange-700 mt-4 text-xl">TEKAN 'L'</p>
+                        <p class="text-xs text-orange-400 mt-1 uppercase tracking-tighter">Untuk Memborong Barang</p>
+                    </div>
+                </div>
+
+                <div class="bg-yellow-50 p-4 rounded-xl mb-8 border border-yellow-200">
+                    <p class="text-sm text-yellow-700"><strong>Aturan Pasar:</strong> Cepat-cepatan tekan bel! Jawaban benar menambah omzet, jawaban salah membuat rugi.</p>
+                </div>
+                
+                <button onclick="startGame()" class="bg-red-600 hover:bg-red-700 text-white font-black py-4 px-12 rounded-full text-2xl shadow-[0_6px_0_#b91c1c] active:shadow-none active:translate-y-1 transition-all">
+                    BUKA PASAR!
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Game UI -->
+    <div id="game-ui" class="flex-1 flex flex-col hidden">
+        <!-- Dashboard Skor -->
+        <div class="h-24 bg-white border-b-4 border-gray-200 flex items-center justify-between px-12 z-20">
+            <div class="flex items-center gap-4 bg-blue-600 text-white p-3 rounded-2xl shadow-lg min-w-[150px]">
+                <div class="bg-white rounded-lg p-2 text-2xl">🛒</div>
+                <div>
+                    <p class="text-[10px] font-bold uppercase opacity-80">Omzet P1</p>
+                    <p id="p1-score" class="text-2xl font-black">0</p>
+                </div>
+            </div>
+
+            <div class="text-center">
+                <div class="heading-font text-red-600 text-2xl">INDEKS HARGA</div>
+                <div id="round-indicator" class="text-xs font-bold text-gray-400 uppercase tracking-[0.2em]">Transaksi 1 / 6</div>
+            </div>
+
+            <div class="flex items-center gap-4 bg-orange-600 text-white p-3 rounded-2xl shadow-lg min-w-[150px] text-right justify-end">
+                <div>
+                    <p class="text-[10px] font-bold uppercase opacity-80">Omzet P2</p>
+                    <p id="p2-score" class="text-2xl font-black">0</p>
+                </div>
+                <div class="bg-white rounded-lg p-2 text-2xl">🛍️</div>
+            </div>
+        </div>
+
+        <!-- Duel Arena -->
+        <div class="flex-1 flex relative">
+            <!-- Zona P1 -->
+            <div id="p1-zone" class="flex-1 player-zone bg-blue-50/50 flex flex-col items-center justify-center p-10 border-r-2 border-dashed border-gray-300">
+                <div class="p1-status text-blue-300 text-9xl font-black opacity-20 select-none">P1</div>
+            </div>
+
+            <!-- Kartu Pertanyaan Central -->
+            <div id="question-area" class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-xl z-30 px-4">
+                <div id="q-card" class="bg-white rounded-3xl shadow-[0_15px_40px_rgba(0,0,0,0.15)] overflow-hidden border-2 border-gray-100">
+                    <div id="q-header" class="bg-gray-800 p-3 text-center">
+                        <span id="q-category" class="text-[10px] text-white font-bold uppercase tracking-[0.3em]">Kategori: Definisi</span>
+                    </div>
+                    <div class="p-8 text-center">
+                        <h3 id="q-text" class="text-xl md:text-2xl font-bold text-gray-800 leading-tight mb-8">Menyiapkan dagangan...</h3>
+                        
+                        <div id="options" class="grid grid-cols-1 gap-3 hidden">
+                            <!-- Tombol Opsi -->
+                        </div>
+
+                        <div id="buzzer-prompt" class="flex flex-col items-center gap-4">
+                            <div class="w-20 h-20 bg-red-600 rounded-full border-b-8 border-red-800 flex items-center justify-center text-white text-3xl shadow-xl buzzer-active">🔔</div>
+                            <p class="font-black text-red-600 animate-pulse text-lg">SIAP... TEKAN BEL!</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Zona P2 -->
+            <div id="p2-zone" class="flex-1 player-zone bg-orange-50/50 flex flex-col items-center justify-center p-10">
+                <div class="p2-status text-orange-300 text-9xl font-black opacity-20 select-none">P2</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Result Screen -->
+    <div id="result-screen" class="absolute inset-0 z-[100] bg-gray-900/90 backdrop-blur-md flex items-center justify-center p-6 hidden">
+        <div class="bg-white rounded-[40px] p-12 max-w-lg w-full text-center shadow-2xl relative overflow-hidden">
+            <div class="stall-roof h-10 w-full absolute top-0 left-0"></div>
+            <h2 id="winner-title" class="heading-font text-5xl text-red-600 mb-2 mt-4">PASAR TUTUP!</h2>
+            <p class="text-gray-500 font-bold mb-10">Hasil Rekapitulasi Keuntungan</p>
+            
+            <div class="flex justify-between items-center bg-gray-50 p-8 rounded-3xl mb-10">
+                <div class="text-center">
+                    <div class="w-16 h-16 bg-blue-600 rounded-2xl flex items-center justify-center text-3xl mx-auto mb-2 shadow-lg">🛒</div>
+                    <p class="text-xs font-bold text-blue-600 uppercase">Pemain 1</p>
+                    <p id="final-p1" class="text-4xl font-black text-gray-800">0</p>
+                </div>
+                <div class="text-4xl font-black text-gray-300">VS</div>
+                <div class="text-center">
+                    <div class="w-16 h-16 bg-orange-600 rounded-2xl flex items-center justify-center text-3xl mx-auto mb-2 shadow-lg">🛍️</div>
+                    <p class="text-xs font-bold text-orange-600 uppercase">Pemain 2</p>
+                    <p id="final-p2" class="text-4xl font-black text-gray-800">0</p>
+                </div>
+            </div>
+
+            <button onclick="location.reload()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-black py-4 px-10 rounded-2xl w-full text-xl transition-all shadow-[0_5px_0_#312e81] active:translate-y-1 active:shadow-none">
+                MULAI HARI BARU
+            </button>
+        </div>
+    </div>
+
+    <script>
+        let p1Score = 0;
+        let p2Score = 0;
+        let canBuzz = false;
+        let activePlayer = null;
+        let currentQIndex = 0;
+        let isMusicPlaying = false;
+
+        const music = document.getElementById('bg-music');
+        const musicToggle = document.getElementById('music-toggle');
+        const musicIcon = document.getElementById('music-icon');
+
+        const questions = [
+            {
+                cat: "Definisi",
+                q: "Secara harfiah, Indeks Harga adalah...",
+                options: [
+                    "Angka yang menunjukkan perubahan harga rata-rata pada suatu periode dibanding tahun dasar",
+                    "Daftar total pengeluaran belanja seluruh penduduk dalam satu tahun",
+                    "Jumlah keuntungan yang didapat oleh pedagang pasar dalam satu hari",
+                    "Catatan harga barang paling mahal di suatu negara"
+                ],
+                correct: 0
+            },
+            {
+                cat: "Tujuan",
+                q: "Salah satu tujuan utama penghitungan Indeks Harga Konsumen (IHK) bagi pemerintah adalah...",
+                options: [
+                    "Menambah jumlah pasar modern di perkotaan",
+                    "Sebagai indikator pengukur tingkat inflasi",
+                    "Membatasi jumlah barang yang boleh dibeli rakyat",
+                    "Menghitung jumlah pedagang yang jujur"
+                ],
+                correct: 1
+            },
+            {
+                cat: "Definisi",
+                q: "Tahun yang dipilih sebagai titik tolak perbandingan harga disebut sebagai...",
+                options: [
+                    "Tahun Berjalan",
+                    "Tahun Masa Depan",
+                    "Tahun Dasar",
+                    "Tahun Pajak"
+                ],
+                correct: 2
+            },
+            {
+                cat: "Tujuan",
+                q: "Bagi pelaku usaha, data indeks harga sangat berguna untuk...",
+                options: [
+                    "Mengetahui jumlah pesaing di pasar",
+                    "Pedoman dalam menentukan kebijakan upah karyawan",
+                    "Mencari lokasi gudang yang paling strategis",
+                    "Menghitung biaya listrik pabrik"
+                ],
+                correct: 1
+            },
+            {
+                cat: "Definisi",
+                q: "Indeks harga yang digunakan untuk mengukur tingkat kesejahteraan petani disebut...",
+                options: [
+                    "Indeks Harga Konsumen",
+                    "Indeks Harga Produsen",
+                    "Indeks Harga Saham Gabungan",
+                    "Indeks Harga yang Diterima dan Dibayar Petani"
+                ],
+                correct: 3
+            },
+            {
+                cat: "Tujuan",
+                q: "Salah satu fungsi indeks harga bagi perekonomian nasional adalah sebagai...",
+                options: [
+                    "Alat untuk menurunkan harga secara paksa",
+                    "Dasar penetapan kebijakan moneter oleh bank sentral",
+                    "Penentu siapa yang boleh menjadi eksportir",
+                    "Alat untuk membagi sembako gratis"
+                ],
+                correct: 1
+            }
+        ];
+
+        function toggleMusic() {
+            if (isMusicPlaying) {
+                music.pause();
+                musicIcon.innerText = "🔇";
+            } else {
+                music.play().catch(e => console.log("Gagal memutar musik:", e));
+                musicIcon.innerText = "🎵";
+            }
+            isMusicPlaying = !isMusicPlaying;
+        }
+
+        function startGame() {
+            document.getElementById('start-screen').classList.add('hidden');
+            document.getElementById('game-ui').classList.remove('hidden');
+            musicToggle.classList.remove('hidden');
+            
+            // Mulai musik saat game dimulai
+            music.play().then(() => {
+                isMusicPlaying = true;
+            }).catch(e => {
+                console.log("Autoplay dicegah oleh browser, user perlu klik ikon musik");
+            });
+
+            nextQuestion();
+        }
+
+        function nextQuestion() {
+            if (currentQIndex >= questions.length) {
+                endGame();
+                return;
+            }
+
+            activePlayer = null;
+            canBuzz = true;
+            
+            const q = questions[currentQIndex];
+            document.getElementById('round-indicator').innerText = `Transaksi ${currentQIndex + 1} / ${questions.length}`;
+            document.getElementById('q-category').innerText = `Kategori: ${q.cat}`;
+            document.getElementById('q-text').innerText = q.q;
+            document.getElementById('options').classList.add('hidden');
+            document.getElementById('buzzer-prompt').classList.remove('hidden');
+            
+            // Reset visual zonasi
+            document.getElementById('p1-zone').className = "flex-1 player-zone bg-blue-50/50 flex flex-col items-center justify-center p-10 border-r-2 border-dashed border-gray-300";
+            document.getElementById('p2-zone').className = "flex-1 player-zone bg-orange-50/50 flex flex-col items-center justify-center p-10";
+            document.querySelector('.p1-status').classList.remove('opacity-100', 'text-blue-600');
+            document.querySelector('.p2-status').classList.remove('opacity-100', 'text-orange-600');
+        }
+
+        window.addEventListener('keydown', (e) => {
+            if (!canBuzz) return;
+
+            const key = e.key.toLowerCase();
+            if (key === 'a') handleBuzz(1);
+            else if (key === 'l') handleBuzz(2);
+        });
+
+        function handleBuzz(playerNum) {
+            canBuzz = false;
+            activePlayer = playerNum;
+            
+            document.getElementById('buzzer-prompt').classList.add('hidden');
+            document.getElementById('options').classList.remove('hidden');
+            
+            const pZone = document.getElementById(`p${playerNum}-zone`);
+            pZone.classList.add('active-turn', playerNum === 1 ? 'bg-blue-100' : 'bg-orange-100');
+            
+            const statusText = document.querySelector(`.p${playerNum}-status`);
+            statusText.classList.add('opacity-100', playerNum === 1 ? 'text-blue-600' : 'text-orange-600');
+            statusText.innerText = "MENJAWAB!";
+            
+            showOptions();
+        }
+
+        function showOptions() {
+            const q = questions[currentQIndex];
+            const container = document.getElementById('options');
+            container.innerHTML = '';
+            
+            q.options.forEach((opt, idx) => {
+                const btn = document.createElement('button');
+                btn.className = `w-full text-left p-4 rounded-2xl border-2 border-gray-100 hover:bg-gray-50 transition-all font-bold text-sm mb-1 flex items-start gap-3 group`;
+                
+                const label = String.fromCharCode(65 + idx);
+                btn.innerHTML = `
+                    <span class="bg-gray-100 group-hover:bg-indigo-500 group-hover:text-white w-6 h-6 flex-shrink-0 flex items-center justify-center rounded-md transition-colors">${label}</span>
+                    <span class="text-gray-700">${opt}</span>
+                `;
+                btn.onclick = () => submitAnswer(idx);
+                container.appendChild(btn);
+            });
+        }
+
+        function submitAnswer(idx) {
+            const q = questions[currentQIndex];
+            const isCorrect = idx === q.correct;
+            const scoreVal = 10;
+            const penaltyVal = 5;
+            
+            if (isCorrect) {
+                if (activePlayer === 1) p1Score += scoreVal;
+                else p2Score += scoreVal;
+                createFloatingText("CORRECT! +10", "text-green-500");
+                showToast("🎯 Bagus! Dagangan Laku!", "bg-green-600");
+            } else {
+                if (activePlayer === 1) p1Score = Math.max(0, p1Score - penaltyVal);
+                else p2Score = Math.max(0, p2Score - penaltyVal);
+                createFloatingText("WRONG! -5", "text-red-500");
+                showToast("❌ Salah! Stok Rusak!", "bg-red-600");
+            }
+
+            updateScores();
+            currentQIndex++;
+            
+            // Memberi waktu sebelum soal berikutnya
+            setTimeout(nextQuestion, 1500);
+        }
+
+        function updateScores() {
+            document.getElementById('p1-score').innerText = p1Score;
+            document.getElementById('p2-score').innerText = p2Score;
+        }
+
+        function createFloatingText(text, colorClass) {
+            const el = document.createElement('div');
+            el.className = `fixed z-[150] text-3xl font-black ${colorClass} coin-pop pointer-events-none`;
+            el.innerText = text;
+            
+            // Posisikan di tengah zona pemain aktif
+            const zone = activePlayer === 1 ? 'left-[25%]' : 'left-[75%]';
+            el.classList.add(zone, 'top-1/2');
+            
+            document.body.appendChild(el);
+            setTimeout(() => el.remove(), 600);
+        }
+
+        function showToast(msg, colorClass) {
+            const toast = document.createElement('div');
+            toast.className = `fixed top-28 left-1/2 -translate-x-1/2 px-6 py-3 rounded-full text-white font-bold shadow-2xl z-[100] transition-all transform -translate-y-10 opacity-0 ${colorClass}`;
+            toast.innerText = msg;
+            document.body.appendChild(toast);
+            
+            // Animasi masuk
+            requestAnimationFrame(() => {
+                toast.classList.remove('-translate-y-10', 'opacity-0');
+            });
+
+            setTimeout(() => {
+                toast.classList.add('opacity-0');
+                setTimeout(() => toast.remove(), 500);
+            }, 1200);
+        }
+
+        function endGame() {
+            document.getElementById('result-screen').classList.remove('hidden');
+            document.getElementById('final-p1').innerText = p1Score;
+            document.getElementById('final-p2').innerText = p2Score;
+            
+            const winnerTitle = document.getElementById('winner-title');
+            if (p1Score > p2Score) {
+                winnerTitle.innerText = "🛒 P1 JUARA PASAR!";
+                winnerTitle.className = "heading-font text-5xl text-blue-600 mb-2 mt-4";
+            } else if (p2Score > p1Score) {
+                winnerTitle.innerText = "🛍️ P2 JUARA PASAR!";
+                winnerTitle.className = "heading-font text-5xl text-orange-600 mb-2 mt-4";
+            } else {
+                winnerTitle.innerText = "🤝 PASAR SERI!";
+                winnerTitle.className = "heading-font text-5xl text-gray-600 mb-2 mt-4";
+            }
+        }
+    </script>
+</body>
+</html>
